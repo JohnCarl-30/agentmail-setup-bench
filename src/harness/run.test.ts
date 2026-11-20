@@ -37,6 +37,8 @@ interface Behaviour {
   /** Event types to register the webhook with, or null to register none. */
   eventTypes?: string[] | null;
   webhookUrl?: (given: string) => string;
+  /** Register the webhook for the whole organization instead of on the inbox. */
+  organizationWebhook?: boolean;
   secret?: "right" | "wrong" | "none";
   reply?: "thread" | "new-email" | "none";
 }
@@ -60,7 +62,9 @@ function scripted(behaviour: Behaviour = {}): Agent {
     const eventTypes = behaviour.eventTypes === undefined ? ["message.received"] : behaviour.eventTypes;
     if (eventTypes) {
       const url = behaviour.webhookUrl ? behaviour.webhookUrl(webhookUrl) : webhookUrl;
-      const webhook = await call("POST", `${fake.url}/inboxes/${inbox.inbox_id}/webhooks`, { url, event_types: eventTypes });
+      const webhook = behaviour.organizationWebhook
+        ? await call("POST", `${fake.url}/webhooks`, { url, event_types: eventTypes, inbox_ids: [inbox.inbox_id] })
+        : await call("POST", `${fake.url}/inboxes/${inbox.inbox_id}/webhooks`, { url, event_types: eventTypes });
       const secret = behaviour.secret ?? "right";
       if (secret !== "none") {
         await tools.http({ method: "POST", url: secretUrl, body: JSON.stringify({ secret: secret === "right" ? webhook.secret : "whsec_bm90LXRoZS1yZWFsLW9uZQ==" }) });
@@ -192,6 +196,15 @@ describe("what a run leaves behind", () => {
     await run(scripted());
 
     assert.deepEqual([...fake.inboxes.keys()], [seedInboxId]);
+  });
+
+  // Left behind, it would keep sending every inbox's mail to an address nobody holds any more.
+  it("deletes a webhook the agent registered for the whole organization", async () => {
+    const result = await run(scripted({ organizationWebhook: true }));
+
+    assert.equal(result.score.passed, true);
+    assert.deepEqual(fake.webhooks, []);
+    assert.deepEqual(result.details.harnessErrors, []);
   });
 
   it("records an agent that crashes as a failed run, not a failed harness", async () => {
