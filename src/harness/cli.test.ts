@@ -54,4 +54,21 @@ describe("findOrCreateSeed", () => {
     assert.equal((await findOrCreateSeed(agentMail)).inbox_id, "new");
     assert.deepEqual(bodies, [{ client_id: "setup-bench-seed", display_name: "Setup bench" }]);
   });
+
+  it("uses an inbox the account already has when one is named, and creates nothing", async () => {
+    let created = 0;
+    const agentMail = {
+      listInboxes: async () => [inbox("other"), inbox("seed", "setup-bench-seed")],
+      createInbox: async () => {
+        created += 1;
+        return inbox("new");
+      },
+    } as unknown as AgentMail;
+
+    assert.equal((await findOrCreateSeed(agentMail, "Other@agentmail.to")).inbox_id, "other");
+    assert.equal(created, 0);
+    // A mistyped name must stop the command instead of quietly making a new inbox.
+    await assert.rejects(findOrCreateSeed(agentMail, "nobody@agentmail.to"), /no such inbox/);
+    assert.equal(created, 0);
+  });
 });
