@@ -245,6 +245,13 @@ export async function runOnce(deps: RunDeps): Promise<RunResult> {
   for (const inbox of (await guard("listing inboxes to clean up", newInboxes)) ?? []) {
     await guard(`deleting inbox ${inbox.inbox_id}`, () => agentMail.deleteInbox(inbox.inbox_id));
   }
+  // An organization webhook outlives the inbox, and then covers every inbox in
+  // the account. The run's address is unique, so only this run's can match.
+  for (const webhook of (await guard("listing webhooks to clean up", () => agentMail.listOrgWebhooks())) ?? []) {
+    if (webhook.url === webhookUrl) {
+      await guard(`deleting webhook ${webhook.webhook_id}`, () => agentMail.deleteWebhook(webhook.webhook_id));
+    }
+  }
 
   const endedAt = now();
   const inboxEmail = (agentInbox as Inbox | null)?.email ?? null;
