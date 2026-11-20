@@ -4,7 +4,7 @@ A benchmark of how well AI agents set [AgentMail](https://agentmail.to) up from 
 
 AgentMail's own [evals](https://www.agentmail.to/evals) test what an agent does with an inbox that is already set up. This tests the step before. It is independent work and is not affiliated with AgentMail.
 
-**Status:** the referee and the harness are built and tested against a local stand-in for AgentMail. No run against the real service has been made yet, so there are no results to report.
+**Status:** the referee and the harness are built and tested against a local stand-in for AgentMail. One trial run against the real service has passed, which shows the harness works end to end. One run is not a result, so there are none to report yet.
 
 ## The referee
 
@@ -68,7 +68,7 @@ Runs one agent through the task and works out, from the outside, what it did.
 npm run bench -- --model anthropic:claude-opus-5-5 --runs 10
 ```
 
-It needs the referee running at a public address, an AgentMail key on a verified account, and a key for the model. See `.env.example`. **Each run calls the model, which costs tokens, and sends one email.**
+It needs the referee running at a public address, an AgentMail key on a verified account, and a key for the model. See `.env.example`. The account needs room for two inboxes, the harness's and the agent's; set `SEED_INBOX` to use an inbox it already has as the harness's. **Each run calls the model, which costs tokens, and sends one email.**
 
 ### The task
 
@@ -114,8 +114,8 @@ One JSON file per run, under `results/`: the score, the evidence for each step, 
 
 - **It is a minimal harness, not a coding agent.** AgentMail's evals ran models inside products such as Codex and Claude Code. Results here are not comparable with theirs.
 - **The agent holds the same API key as the harness.** It could read the harness's own inbox. Scoring only counts outcomes it cannot fake that way, but the setups are not isolated.
-- **The thread check is untested against the real service.** It assumes a reply lands in the thread of the email it answers, as seen from the receiving inbox.
-- **Organization-level webhooks are not cleaned up.** The run's inbox is deleted afterwards; a webhook an agent registered for the whole organization is left in place.
+- **The thread check has held in one real run.** It assumes a reply lands in the thread of the email it answers, as seen from the receiving inbox.
+- **Cleanup covers what the harness can recognise.** The run's inbox is deleted afterwards, and so is an organization webhook at the run's address. Anything else an agent made is left in place.
 - **Small samples.** Ten runs per model is few. Report the count with every rate.
 
 ## Tests
@@ -125,7 +125,7 @@ npm test
 npm run typecheck
 ```
 
-61 tests, none of which call a model or AgentMail:
+63 tests, none of which call a model or AgentMail:
 
 - the signature check, and the referee end to end with deliveries signed the way Svix signs them;
 - whole runs through the harness and the real referee, against a stand-in for AgentMail's API, with scripted agents that fail each step on purpose;
