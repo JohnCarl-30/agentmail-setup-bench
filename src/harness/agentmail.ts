@@ -107,6 +107,9 @@ export function createAgentMail(options: AgentMailOptions) {
     },
     listInboxWebhooks: (inboxId: string) => list<Webhook>(`${inboxPath(inboxId)}/webhooks`, "webhooks"),
     listOrgWebhooks: () => list<Webhook>("/webhooks", "webhooks"),
+    deleteWebhook: async (webhookId: string): Promise<void> => {
+      await call("DELETE", `/webhooks/${encodeURIComponent(webhookId)}`);
+    },
     send: (inboxId: string, message: { to: string[]; subject: string; text: string }) =>
       call("POST", `${inboxPath(inboxId)}/messages/send`, message) as Promise<SentMessage>,
     // Spam and unauthenticated mail are left out of the default list, and a reply
