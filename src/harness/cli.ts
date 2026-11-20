@@ -47,8 +47,17 @@ function required(name: string): string {
 }
 
 /** The harness's own inbox, reused across runs so it does not use up the plan's inbox limit. */
-export async function findOrCreateSeed(agentMail: AgentMail): Promise<Inbox> {
-  const existing = (await agentMail.listInboxes()).find((inbox) => inbox.client_id === SEED_CLIENT_ID);
+export async function findOrCreateSeed(agentMail: AgentMail, named?: string): Promise<Inbox> {
+  const inboxes = await agentMail.listInboxes();
+  if (named) {
+    // An account near its inbox limit names one it already has, so the agent's inbox still fits.
+    const chosen = inboxes.find((inbox) => inbox.inbox_id === named || inbox.email.toLowerCase() === named.toLowerCase());
+    if (!chosen) {
+      throw new Error(`SEED_INBOX is "${named}", but the account has no such inbox.`);
+    }
+    return chosen;
+  }
+  const existing = inboxes.find((inbox) => inbox.client_id === SEED_CLIENT_ID);
   return existing ?? agentMail.createInbox({ client_id: SEED_CLIENT_ID, display_name: "Setup bench" });
 }
 
@@ -63,7 +72,7 @@ async function main(): Promise<void> {
   const agentMail = createAgentMail({ apiKey, baseUrl: apiBaseUrl });
   const referee = createRefereeClient({ url: refereeUrl, adminToken: required("REFEREE_ADMIN_TOKEN") });
   const agent = createModelAgent({ model: await resolveModel(args.model) });
-  const seed = await findOrCreateSeed(agentMail);
+  const seed = await findOrCreateSeed(agentMail, process.env.SEED_INBOX);
   mkdirSync(args.out, { recursive: true });
 
   console.log(`${args.runs} run(s) of ${args.model}. Each one calls the model, which costs tokens, and sends one email from ${seed.email}.`);
