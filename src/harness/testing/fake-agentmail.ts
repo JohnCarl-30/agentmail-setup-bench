@@ -198,6 +198,14 @@ export async function startFakeAgentMail(options: { apiKey: string }): Promise<F
       const organization = webhooks.filter((webhook) => !webhook.inbox_id);
       return { status: 200, body: { count: organization.length, webhooks: organization } };
     }
+    if (root === "webhooks" && parts.length === 2 && method === "DELETE") {
+      const index = webhooks.findIndex((webhook) => webhook.webhook_id === inboxId && !webhook.inbox_id);
+      if (index < 0) {
+        throw new ApiError(404, "not_found", "Webhook not found.");
+      }
+      webhooks.splice(index, 1);
+      return { status: 200 };
+    }
     if (root !== "inboxes") {
       throw new ApiError(404, "not_found", "No such endpoint.");
     }
